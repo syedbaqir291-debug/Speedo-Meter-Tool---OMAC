@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OMAC Analytics — KPI Speedometer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f4f8;--surf:#fff;--surf2:#f7f9fc;--bdr:#e2e8f0;
+  --tx:#0f172a;--tx2:#475569;--tx3:#94a3b8;
+  --acc:#2563eb;--acc2:#1d4ed8;
+  --pill-bg:#1e3a8a;--pill-tx:#bfdbfe;
+  --sh:0 4px 24px rgba(0,0,0,0.09);
+  --font:'Segoe UI',system-ui,sans-serif
+}
+[data-theme=dark]{
+  --bg:#0a0f1e;--surf:#111827;--surf2:#1a2235;--bdr:#1f2d45;
+  --tx:#e2e8f0;--tx2:#94a3b8;--tx3:#374151;
+  --acc:#3b82f6;--acc2:#2563eb;
+  --pill-bg:#172554;--pill-tx:#93c5fd;
+  --sh:0 4px 32px rgba(0,0,0,0.5)
+}
+body{background:var(--bg);color:var(--tx);font-family:var(--font);min-height:100vh;display:flex;flex-direction:column;transition:background .25s,color .25s}
+.topbar{height:54px;background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;padding:0 28px;flex-shrink:0}
+.pill{background:var(--pill-bg);color:var(--pill-tx);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 16px;border-radius:100px}
+.ttl{font-size:13px;font-weight:500;color:var(--tx2);margin-left:14px}
+.thmbtn{display:flex;align-items:center;gap:7px;background:var(--surf2);border:1px solid var(--bdr);color:var(--tx2);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);transition:background .15s}
+.thmbtn:hover{background:var(--bdr)}
+.layout{display:flex;flex:1}
+.sidebar{width:272px;min-width:260px;background:var(--surf);border-right:1px solid var(--bdr);padding:20px 16px;overflow-y:auto;flex-shrink:0}
+.slbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin:0 0 10px}
+.sec{margin-bottom:24px}
+.f{margin-bottom:11px}
+.f label{display:block;font-size:12px;font-weight:500;color:var(--tx2);margin-bottom:4px}
+.f input[type=text],.f input[type=number]{width:100%;padding:7px 10px;background:var(--surf2);border:1px solid var(--bdr);border-radius:7px;color:var(--tx);font-size:13px;font-family:var(--font);outline:none;transition:border-color .15s}
+.f input:focus{border-color:var(--acc)}
+.cr{display:flex;align-items:center;gap:9px}
+.cr input[type=color]{width:34px;height:30px;border:1px solid var(--bdr);border-radius:6px;padding:2px;background:var(--surf2);cursor:pointer}
+.cr span{font-size:12px;color:var(--tx2)}
+.tog{display:flex;border:1px solid var(--bdr);border-radius:7px;overflow:hidden}
+.tbt{flex:1;padding:7px 8px;font-size:12px;font-weight:500;background:transparent;border:none;color:var(--tx2);cursor:pointer;font-family:var(--font);transition:all .15s}
+.tbt.on{background:var(--acc);color:#fff}
+
+/* Main content area */
+.content{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px;gap:16px;min-width:0}
+
+/* Card holds gauge on top, stat cards BELOW */
+.gcard{background:var(--surf);border:1px solid var(--bdr);border-radius:14px;box-shadow:var(--sh);padding:26px 28px 22px;width:100%;max-width:700px}
+.dtag{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-bottom:2px}
+.dname{font-size:20px;font-weight:700;color:var(--tx);margin-bottom:14px}
+
+/* Canvas wrapper — full width of card */
+.canvas-wrap{width:100%;display:flex;justify-content:center}
+canvas#gc{display:block;width:100%;height:auto;max-width:660px}
+
+/* Stat cards row BELOW the gauge */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
+.sc{border-radius:8px;padding:11px 12px;border-left:3px solid transparent;display:flex;flex-direction:column;gap:4px}
+.sclbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.scn{font-size:24px;font-weight:800;line-height:1}
+.scb{display:flex;align-items:baseline;justify-content:space-between;gap:4px}
+.scp{font-size:12px;font-weight:700}
+
+.dlbtn{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s;font-family:var(--font)}
+.dlbtn:hover{background:var(--acc2)}
+.footer{height:40px;background:var(--surf);border-top:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tx3);flex-shrink:0}
+.footer b{color:var(--tx2);font-weight:600}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="topbar">
+  <div style="display:flex;align-items:center">
+    <span class="pill">OMAC Analytics</span>
+    <span class="ttl">KPI Speedometer Builder</span>
+  </div>
+  <button class="thmbtn" id="thmbtn" onclick="toggleTheme()">&#9790; Dark mode</button>
+</div>
+
+<div class="layout">
+<div class="sidebar">
+  <div class="sec">
+    <div class="slbl">Department</div>
+    <div class="f"><label>Name</label><input type="text" id="dName" value="Finance Department" oninput="go()"></div>
+  </div>
+  <div class="sec">
+    <div class="slbl">Indicator Counts</div>
+    <div class="f"><label>Met — on target</label><input type="number" id="iM" value="3" min="0" oninput="go()"></div>
+    <div class="f"><label>Partial Met — within 5%</label><input type="number" id="iP" value="2" min="0" oninput="go()"></div>
+    <div class="f"><label>Not Met — over 5% away</label><input type="number" id="iN" value="1" min="0" oninput="go()"></div>
+  </div>
+  <div class="sec">
+    <div class="slbl">Zone Colors</div>
+    <div class="f"><label>Met</label>
+      <div class="cr"><input type="color" id="cM" value="#16a34a" oninput="go()"><span>Achieved target</span></div></div>
+    <div class="f"><label>Partial Met</label>
+      <div class="cr"><input type="color" id="cP" value="#ea580c" oninput="go()"><span>Within 5%</span></div></div>
+    <div class="f"><label>Not Met</label>
+      <div class="cr"><input type="color" id="cN" value="#dc2626" oninput="go()"><span>Over 5% away</span></div></div>
+  </div>
+  <div class="sec">
+    <div class="slbl">End Style</div>
+    <div class="tog">
+      <button class="tbt on" id="bT" onclick="setE('t')">Tapered</button>
+      <button class="tbt" id="bB" onclick="setE('b')">Blunt</button>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="gcard">
+    <div class="dtag">Department</div>
+    <div class="dname" id="dDisp">Finance Department</div>
+    <div class="canvas-wrap">
+      <canvas id="gc"></canvas>
+    </div>
+    <div class="stat-row" id="statRow"></div>
+  </div>
+  <button class="dlbtn" onclick="downloadPNG()">&#8659;&nbsp; Download as PNG</button>
+</div>
+</div>
+
+<div class="footer"><b>OMAC</b> by S M Baqir &nbsp;·&nbsp; OMAC Analytics KPI Suite</div>
+
+<script>
+var ES='t', DARK=false;
+
+function toggleTheme(){
+  DARK=!DARK;
+  document.body.setAttribute('data-theme',DARK?'dark':'light');
+  document.getElementById('thmbtn').innerHTML=DARK?'&#9728; Light mode':'&#9790; Dark mode';
+  go();
+}
+function setE(s){
+  ES=s;
+  document.getElementById('bT').className='tbt'+(s==='t'?' on':'');
+  document.getElementById('bB').className='tbt'+(s==='b'?' on':'');
+  go();
+}
+function getV(){
+  return{
+    name: document.getElementById('dName').value||'Department',
+    met:  Math.max(0,parseInt(document.getElementById('iM').value)||0),
+    part: Math.max(0,parseInt(document.getElementById('iP').value)||0),
+    notm: Math.max(0,parseInt(document.getElementById('iN').value)||0),
+    cM:   document.getElementById('cM').value,
+    cP:   document.getElementById('cP').value,
+    cN:   document.getElementById('cN').value
+  };
+}
+function hRgba(h,a){
+  var r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);
+  return'rgba('+r+','+g+','+b+','+a+')';
+}
+
+/*
+  ANGLE SYSTEM (verified):
+  Canvas: 0=right, 90=down, 180=left, 270=up (y-axis down, clockwise)
+  Upper hemisphere: arc clockwise from 180° to 360° (passes through 270°=top)
+  Zones left→right: Green(180→greenEnd) | Orange(greenEnd→orangeEnd) | Red(orangeEnd→360)
+  All degrees in this same system. Convert to radians for cos/sin/ctx.arc.
+*/
+function deg2rad(d){ return d*Math.PI/180; }
+
+function renderGauge(ctx, d, dark, W, H){
+  var total=d.met+d.part+d.notm; if(total===0){d.met=1;total=1;}
+  var mF=d.met/total, pF=d.part/total, nF=d.notm/total;
+
+  /* Arc center at bottom edge — only upper half visible */
+  var cx=W/2, cy=H;
+
+  /* Radii: leave padding on left/right for labels (60px each side) */
+  var PAD=62;
+  var OR=Math.min(H*0.92, W/2-PAD);
+  var IR=OR*0.575;
+
+  var D_START=180, D_END=360;
+  var greenEnd  = D_START + mF*180;
+  var orangeEnd = greenEnd + pF*180;
+
+  /* arc band segment */
+  function band(dFrom,dTo,color){
+    if(Math.abs(dTo-dFrom)<0.3)return;
+    ctx.beginPath();
+    ctx.arc(cx,cy,OR,deg2rad(dFrom),deg2rad(dTo),false);
+    ctx.arc(cx,cy,IR,deg2rad(dTo),deg2rad(dFrom),true);
+    ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+  }
+
+  /* background track */
+  band(D_START,D_END, dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)');
+
+  /* zones */
+  if(mF>0) band(D_START,  greenEnd,  d.cM);
+  if(pF>0) band(greenEnd, orangeEnd, d.cP);
+  if(nF>0) band(orangeEnd,D_END,     d.cN);
+
+  /* tapered cap */
+  function taperCap(deg,color){
+    var rad=deg2rad(deg);
+    var midR=(OR+IR)/2, ext=(OR-IR)*0.55;
+    var tx=cx+(midR+ext)*Math.cos(rad), ty=cy+(midR+ext)*Math.sin(rad);
+    var sp=0.065;
+    ctx.beginPath();
+    ctx.moveTo(cx+OR*Math.cos(rad+sp),cy+OR*Math.sin(rad+sp));
+    ctx.lineTo(tx,ty);
+    ctx.lineTo(cx+IR*Math.cos(rad+sp),cy+IR*Math.sin(rad+sp));
+    ctx.lineTo(cx+IR*Math.cos(rad-sp),cy+IR*Math.sin(rad-sp));
+    ctx.lineTo(tx,ty);
+    ctx.lineTo(cx+OR*Math.cos(rad-sp),cy+OR*Math.sin(rad-sp));
+    ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+    var spD=sp*180/Math.PI;
+    ctx.beginPath();
+    ctx.arc(cx,cy,OR,deg2rad(deg-spD),deg2rad(deg+spD),false);
+    ctx.arc(cx,cy,IR,deg2rad(deg+spD),deg2rad(deg-spD),true);
+    ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+  }
+  /* blunt cap */
+  function bluntCap(deg,color){
+    var rad=deg2rad(deg), sp=deg2rad(3.5);
+    ctx.beginPath();
+    ctx.moveTo(cx+OR*Math.cos(rad+sp),cy+OR*Math.sin(rad+sp));
+    ctx.lineTo(cx+IR*Math.cos(rad+sp),cy+IR*Math.sin(rad+sp));
+    ctx.lineTo(cx+IR*Math.cos(rad-sp),cy+IR*Math.sin(rad-sp));
+    ctx.lineTo(cx+OR*Math.cos(rad-sp),cy+OR*Math.sin(rad-sp));
+    ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+  }
+  var cap=ES==='t'?taperCap:bluntCap;
+  cap(D_START,d.cM); cap(D_END,d.cN);
+
+  /* dividers */
+  [greenEnd,orangeEnd].forEach(function(deg){
+    var rad=deg2rad(deg);
+    ctx.beginPath();
+    ctx.moveTo(cx+IR*Math.cos(rad),cy+IR*Math.sin(rad));
+    ctx.lineTo(cx+OR*Math.cos(rad),cy+OR*Math.sin(rad));
+    ctx.strokeStyle=dark?'rgba(10,15,30,0.85)':'rgba(255,255,255,0.92)';
+    ctx.lineWidth=3.5; ctx.stroke();
+  });
+
+  /* rim arcs */
+  ctx.beginPath(); ctx.arc(cx,cy,OR,deg2rad(D_START),deg2rad(D_END),false);
+  ctx.strokeStyle=dark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.1)'; ctx.lineWidth=2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,IR,deg2rad(D_START),deg2rad(D_END),false);
+  ctx.strokeStyle=dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)'; ctx.lineWidth=1.5; ctx.stroke();
+
+  /* ticks */
+  for(var i=0;i<=10;i++){
+    var tdeg=D_START+(i/10)*180, trad=deg2rad(tdeg), main=i%2===0;
+    ctx.beginPath();
+    ctx.moveTo(cx+(OR+3)*Math.cos(trad),cy+(OR+3)*Math.sin(trad));
+    ctx.lineTo(cx+(OR+3+(main?13:7))*Math.cos(trad),cy+(OR+3+(main?13:7))*Math.sin(trad));
+    ctx.strokeStyle=dark?(main?'rgba(255,255,255,0.22)':'rgba(255,255,255,0.11)'):(main?'rgba(0,0,0,0.2)':'rgba(0,0,0,0.11)');
+    ctx.lineWidth=main?2:1.2; ctx.stroke();
+  }
+
+  /* % labels — placed INSIDE the arc band to guarantee visibility */
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  var lR_inside = IR + (OR-IR)*0.48; /* mid-band radius */
+
+  function pctLabel(dFrom,dTo,color,frac){
+    if(frac<0.05)return;
+    var midDeg=(dFrom+dTo)/2, midRad=deg2rad(midDeg);
+    var lx=cx+lR_inside*Math.cos(midRad), ly=cy+lR_inside*Math.sin(midRad);
+    ctx.font="bold 15px 'Segoe UI',system-ui,sans-serif";
+    ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=1.5;
+    ctx.strokeText(Math.round(frac*100)+'%',lx,ly);
+    ctx.fillStyle='#fff'; ctx.fillText(Math.round(frac*100)+'%',lx,ly);
+  }
+  if(mF>0) pctLabel(D_START, greenEnd,  d.cM, mF);
+  if(pF>0) pctLabel(greenEnd,orangeEnd, d.cP, pF);
+  if(nF>0) pctLabel(orangeEnd,D_END,    d.cN, nF);
+
+  /* needle — points to greenEnd */
+  var nRad=deg2rad(greenEnd);
+  var nLen=IR+(OR-IR)*0.78;
+  var tx=cx+nLen*Math.cos(nRad), ty=cy+nLen*Math.sin(nRad);
+  var pp=nRad+Math.PI/2, bw=12;
+  var lx2=cx+bw*Math.cos(pp), ly2=cy+bw*Math.sin(pp);
+  var rx=cx-bw*Math.cos(pp),  ry=cy-bw*Math.sin(pp);
+  var bx=cx-28*Math.cos(nRad),by=cy-28*Math.sin(nRad);
+  ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(lx2,ly2); ctx.lineTo(bx,by); ctx.lineTo(rx,ry); ctx.closePath();
+  ctx.fillStyle=dark?'#e2e8f0':'#0f172a'; ctx.fill();
+
+  /* hub */
+  ctx.beginPath(); ctx.arc(cx,cy,25,0,Math.PI*2); ctx.fillStyle=dark?'#1e293b':'#1e293b'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy,17,0,Math.PI*2); ctx.fillStyle='#334155'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2);  ctx.fillStyle=dark?'#94a3b8':'#cbd5e1'; ctx.fill();
+
+  /* needle-end hint */
+  ctx.font="400 11px 'Segoe UI',system-ui,sans-serif";
+  ctx.fillStyle=dark?'rgba(148,163,184,0.45)':'rgba(100,116,139,0.5)';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText('Needle marks end of Met zone',cx,H-4);
+}
+
+function drawToCanvas(canvas,d,dark){
+  var dpr=Math.max(window.devicePixelRatio||1,2);
+  var W=660, H=360;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save(); ctx.scale(dpr,dpr);
+  renderGauge(ctx,d,dark,W,H);
+  ctx.restore();
+}
+
+function drawStatRow(d){
+  var total=d.met+d.part+d.notm||1;
+  var items=[
+    {l:'Met',      c:d.met,  col:d.cM},
+    {l:'Partial Met',  c:d.part, col:d.cP},
+    {l:'Not Met',  c:d.notm, col:d.cN},
+    {l:'Total',    c:d.met+d.part+d.notm, col:DARK?'#64748b':'#475569', isTotal:true}
+  ];
+  document.getElementById('statRow').innerHTML=items.map(function(it){
+    var pct=!it.isTotal?Math.round(it.c/total*100):null;
+    var bg=it.isTotal?(DARK?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.04)'):hRgba(it.col,DARK?.12:.08);
+    return'<div class="sc" style="border-left-color:'+it.col+';background:'+bg+'">'
+      +'<div class="sclbl" style="color:'+it.col+'">'+it.l+'</div>'
+      +'<div class="scb">'
+      +'<span class="scn" style="color:'+it.col+';font-size:'+(it.isTotal?'20px':'24px')+'">'+it.c+'</span>'
+      +(pct!==null?'<span class="scp" style="color:'+it.col+'">'+pct+'%</span>':'')
+      +'</div></div>';
+  }).join('');
+}
+
+function go(){
+  var d=getV();
+  document.getElementById('dDisp').textContent=d.name;
+  drawToCanvas(document.getElementById('gc'),d,DARK);
+  drawStatRow(d);
+}
+
+function downloadPNG(){
+  var d=getV();
+  var SC=3, W=900, H=560;
+  var off=document.createElement('canvas');
+  off.width=W*SC; off.height=H*SC;
+  var ctx=off.getContext('2d'); ctx.scale(SC,SC);
+  ctx.fillStyle=DARK?'#111827':'#ffffff'; ctx.fillRect(0,0,W,H);
+
+  /* gauge centered, leaves room below for cards */
+  var GW=860, GH=430, GX=20, GY=16;
+  var tmp=document.createElement('canvas');
+  tmp.width=GW*SC; tmp.height=GH*SC;
+  var tc=tmp.getContext('2d'); tc.scale(SC,SC);
+  renderGauge(tc,d,DARK,GW,GH);
+  ctx.drawImage(tmp,GX,GY,GW,GH);
+
+  /* dept name */
+  ctx.font="700 20px 'Segoe UI',system-ui,sans-serif";
+  ctx.fillStyle=DARK?'#e2e8f0':'#0f172a';
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillText(d.name,GX+4,16);
+
+  /* stat cards as a row at the bottom */
+  var total=d.met+d.part+d.notm||1;
+  var items=[
+    {l:'Met',      c:d.met,  col:d.cM},
+    {l:'Partial',  c:d.part, col:d.cP},
+    {l:'Not Met',  c:d.notm, col:d.cN},
+    {l:'Total',    c:d.met+d.part+d.notm, col:DARK?'#94a3b8':'#475569', isTotal:true}
+  ];
+  var CY=H-120, CH=100, CW=(W-40)/4-8;
+  items.forEach(function(it,i){
+    var cx2=22+i*(CW+9);
+    var pct=!it.isTotal?Math.round(it.c/total*100):null;
+    ctx.beginPath(); ctx.roundRect(cx2,CY,CW,CH,8);
+    ctx.fillStyle=it.isTotal?(DARK?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.04)'):hRgba(it.col,DARK?.12:.07);
+    ctx.fill();
+    ctx.beginPath(); ctx.roundRect(cx2,CY,4,CH,[8,0,0,8]);
+    ctx.fillStyle=it.col; ctx.fill();
+    ctx.font="700 10px 'Segoe UI',system-ui,sans-serif";
+    ctx.fillStyle=it.col; ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText(it.l.toUpperCase(),cx2+10,CY+10);
+    ctx.font="800 32px 'Segoe UI',system-ui,sans-serif";
+    ctx.textBaseline='bottom';
+    ctx.fillText(String(it.c),cx2+10,CY+CH-8);
+    if(pct!==null){
+      ctx.font="700 16px 'Segoe UI',system-ui,sans-serif";
+      ctx.textAlign='right';
+      ctx.fillText(pct+'%',cx2+CW-8,CY+CH-10);
+    }
+  });
+
+  /* branding */
+  ctx.font="700 10px 'Segoe UI',system-ui,sans-serif";
+  ctx.fillStyle=DARK?'#3b82f6':'#1e40af';
+  ctx.textAlign='right'; ctx.textBaseline='top';
+  ctx.fillText('OMAC ANALYTICS',W-12,12);
+  ctx.font="400 9px 'Segoe UI',system-ui,sans-serif";
+  ctx.fillStyle=DARK?'#374151':'#94a3b8';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText('OMAC by S M Baqir · KPI Speedometer',W/2,H-3);
+
+  var a=document.createElement('a');
+  a.download=(d.name.replace(/\s+/g,'_')||'speedometer')+'.png';
+  a.href=off.toDataURL('image/png'); a.click();
+}
+
+go();
+</script>
+</body>
+</html>
